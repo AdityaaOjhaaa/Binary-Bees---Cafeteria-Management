@@ -147,60 +147,74 @@ export async function createReservation(
     select: { managerId: true },
   });
 
-  if (!employee?.managerId) {
-    return { success: false, error: "Manager not assigned to employee" };
-  }
+  const managerId = employee?.managerId;
 
-  const managerId = employee.managerId;
-
-  const manager = await prisma.manager.findUnique({
-    where: { id: managerId },
-  });
-
-  if (!manager) {
-    return { success: false, error: "Manager not found" };
-  }
-
-  // ✅ PER-SEAT COST
-  const totalCost = numberOfPeople * RESERVATION_COST;
-
-  if (manager.bluDollars < totalCost) {
-    return {
-      success: false,
-      error: "Manager has insufficient Blu Dollars",
-    };
-  }
-
-  // --------------------
-  // Transaction: deduct + create
-  // --------------------
-  return await prisma.$transaction(async (tx) => {
-    await tx.manager.update({
+  // MODIFIED: Check if manager exists before attempting deduction logic
+  if (managerId) {
+    const manager = await prisma.manager.findUnique({
       where: { id: managerId },
-      data: {
-        bluDollars: { decrement: totalCost },
-      },
     });
 
-    const reservation = await tx.reservation.create({
-      data: { employeeId, date, timeSlot, seatNumbers },
-    });
+    if (manager) {
+      const totalCost = numberOfPeople * RESERVATION_COST;
 
-    return {
-      success: true,
-      reservation: {
-        id: reservation.id,
-        date: reservation.date,
-        timeSlot: reservation.timeSlot,
-        seatNumbers: reservation.seatNumbers,
-      },
-      managerCharge: {
-        managerName: manager.name,
-        amount: totalCost,
-        type: "debit",
-      },
-    };
+      if (manager.bluDollars < totalCost) {
+        return {
+          success: false,
+          error: "Manager has insufficient Blu Dollars",
+        };
+      }
+
+      // Execute with manager deduction
+      return await prisma.$transaction(async (tx) => {
+        await tx.manager.update({
+          where: { id: managerId },
+          data: {
+            bluDollars: { decrement: totalCost },
+          },
+        });
+
+        const reservation = await tx.reservation.create({
+          data: { employeeId, date, timeSlot, seatNumbers },
+        });
+
+        return {
+          success: true,
+          reservation: {
+            id: reservation.id,
+            date: reservation.date,
+            timeSlot: reservation.timeSlot,
+            seatNumbers: reservation.seatNumbers,
+          },
+          managerCharge: {
+            managerName: manager.name,
+            amount: totalCost,
+            type: "debit",
+          },
+        };
+      });
+    }
+  }
+
+  // FALLBACK: Create reservation without manager deduction if no manager is assigned
+  const reservation = await prisma.reservation.create({
+    data: { employeeId, date, timeSlot, seatNumbers },
   });
+
+  return {
+    success: true,
+    reservation: {
+      id: reservation.id,
+      date: reservation.date,
+      timeSlot: reservation.timeSlot,
+      seatNumbers: reservation.seatNumbers,
+    },
+    managerCharge: {
+      managerName: "System (No Manager Assigned)",
+      amount: 0,
+      type: "debit",
+    },
+  };
 }
 
 /**
@@ -251,35 +265,46 @@ export async function cancelReservation(
     select: { managerId: true },
   });
 
-  if (!employee?.managerId) return null;
-
-  const managerId = employee.managerId;
-
-  const manager = await prisma.manager.findUnique({
-    where: { id: managerId },
-  });
-
-  if (!manager) return null;
-
-  // ✅ REFUND BASED ON SEATS BOOKED
-  const refundAmount = reservation.seatNumbers.length * RESERVATION_COST;
-
-  await prisma.$transaction(async (tx) => {
-    await tx.reservation.delete({
-      where: { id: reservationId },
-    });
-
-    await tx.manager.update({
+  const managerId = employee?.managerId;
+  
+  // Refund logic only if manager exists
+  if (managerId) {
+    const manager = await prisma.manager.findUnique({
       where: { id: managerId },
-      data: {
-        bluDollars: { increment: refundAmount },
-      },
     });
+
+    if (manager) {
+      const refundAmount = reservation.seatNumbers.length * RESERVATION_COST;
+
+      await prisma.$transaction(async (tx) => {
+        await tx.reservation.delete({
+          where: { id: reservationId },
+        });
+
+        await tx.manager.update({
+          where: { id: managerId },
+          data: {
+            bluDollars: { increment: refundAmount },
+          },
+        });
+      });
+
+      return {
+        managerName: manager.name,
+        amount: refundAmount,
+        type: "credit",
+      };
+    }
+  }
+
+  // Fallback for cancellation without manager
+  await prisma.reservation.delete({
+    where: { id: reservationId },
   });
 
   return {
-    managerName: manager.name,
-    amount: refundAmount,
+    managerName: "System",
+    amount: 0,
     type: "credit",
   };
 }
