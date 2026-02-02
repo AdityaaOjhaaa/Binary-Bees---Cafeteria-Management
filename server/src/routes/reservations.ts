@@ -68,7 +68,9 @@ reservationRouter.post(
       res.status(400).json({ error: result.error });
       return;
     }
-    res.status(201).json(result.reservation);
+    // res.status(201).json(result.reservation);
+    res.status(201).json(result);
+
   }
 );
 
@@ -148,5 +150,7 @@ reservationRouter.delete("/:id", param("id").notEmpty(), async (req: Request, re
     res.status(404).json({ error: "Reservation not found or you cannot cancel it" });
     return;
   }
-  res.status(204).send();
+  // res.status(204).send();
+  res.status(200).json(cancelled);
+
 });
