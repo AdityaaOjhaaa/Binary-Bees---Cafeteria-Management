@@ -6,7 +6,7 @@ import Dashboard from "./pages/Dashboard";
 import Layout from "./components/Layout";
 
 // This helps your app handle the GitHub Pages subfolder
-<BrowserRouter basename="/Binary-Bees---Cafeteria-Management/">
+const BASENAME = "/Binary-Bees---Cafeteria-Management/";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { token } = useAuth();
