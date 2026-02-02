@@ -30,7 +30,7 @@ jobs:
           npm run build
         env:
           # This connects your frontend to your live Render backend
-          VITE_API_URL: https://cafeteria-api.onrender.com
+          VITE_API_URL: https://cafeteria-api-t06o.onrender.com
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
