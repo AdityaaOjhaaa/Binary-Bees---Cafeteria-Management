@@ -26,7 +26,11 @@ jobs:
         run: |
           cd client
           npm install
+          # The next line builds the app while injecting the backend URL
           npm run build
+        env:
+          # This connects your frontend to your live Render backend
+          VITE_API_URL: https://cafeteria-api.onrender.com
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -37,4 +41,5 @@ jobs:
           path: './client/dist'
 
       - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
