@@ -34,7 +34,7 @@ cd ..
 **MongoDB:** Prisma requires MongoDB to be run as a **replica set** (even with one node). Easiest options:
 
 - **MongoDB Atlas** (free tier): create a cluster, get connection string, use as `DATABASE_URL`. Atlas is already a replica set.
-- **Local replica set:** [Run MongoDB as a single-node replica set](https://www.mongodb.com/docs/manual/tutorial/convert-standalone-to-replica-set/) (e.g. `mongod --replSet rs0` then `rs.initiate()` in the shell).
+- **Local replica set:** [Run MongoDB as a single-node replica set](https://www.mongodb.com/docs/manual/tutorial/convert-standalone-to-replica-set/) (e.g. `mongod --replSet rs0` then `rs.initiate()` in the shell). **
 
 Ensure MongoDB is running, then:
 
