@@ -1,51 +1,107 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { login } from "../api/client";
 
-/**
- * Handles redirect from w3 SSO callback: reads token and employee from query,
- * stores in auth context, redirects to dashboard.
- */
-export default function AuthCallback() {
-  const [searchParams] = useSearchParams();
+type LoginMode = "choose" | "demo" | "ibm";
+
+export default function Login() {
+  const [mode, setMode] = useState<LoginMode>("choose");
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const { login: setAuth } = useAuth();
   const navigate = useNavigate();
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const token = searchParams.get("token");
-    const employeeParam = searchParams.get("employee");
+  // HARDCODED URL to fix the 404 in your screenshot
+  const API_BASE_URL = "https://cafeteria-api-t06o.onrender.com";
 
-    if (!token || !employeeParam) {
-      setError("Missing token or employee. Login may have failed.");
-      return;
-    }
-
+  const handleDemoSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
     try {
-      const employee = JSON.parse(decodeURIComponent(employeeParam)) as {
-        id: string;
-        email: string;
-        name: string;
-      };
-      if (!employee.id || !employee.email || !employee.name) {
-        setError("Invalid employee data.");
+      const res = await login(email.trim(), name.trim());
+      if (res.error) {
+        setError(res.error);
         return;
       }
-      setAuth(token, employee);
-      navigate("/", { replace: true });
-    } catch {
-      setError("Invalid callback data.");
+      if (res.data?.token && res.data?.employee) {
+        setAuth(res.data.token, res.data.employee);
+        navigate("/", { replace: true });
+      }
+    } catch (_e) {
+      setError(`Cannot reach server at ${API_BASE_URL}.`);
+    } finally {
+      setLoading(false);
     }
-  }, [searchParams, setAuth, navigate]);
+  };
 
-  if (error) {
+  const handleIbmLogin = () => {
+    setError("");
+    // This now explicitly points to Render, bypassing GitHub's 404
+    window.location.href = `${API_BASE_URL}/api/auth/w3/login`;
+  };
+
+  if (mode === "choose") {
+    return (
+      <div className="container">
+        <div className="card" style={{ maxWidth: 420, marginTop: "3rem" }}>
+          <h1 style={{ marginTop: 0 }}>Cafeteria Seat Reservation</h1>
+          <p style={{ color: "var(--muted)", marginBottom: "1.5rem" }}>
+            Choose how you want to sign in.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              style={{ padding: "1rem", textAlign: "left" }}
+              onClick={() => setMode("demo")}
+            >
+              <strong>Demo user</strong>
+              <br />
+              <span style={{ fontSize: "0.9rem", opacity: 0.9 }}>
+                Sign in with email and name (for testing / local dev)
+              </span>
+            </button>
+            <button
+              type="button"
+              className="btn"
+              style={{ padding: "1rem", textAlign: "left" }}
+              onClick={() => setMode("ibm")}
+            >
+              <strong>IBM employee</strong>
+              <br />
+              <span style={{ fontSize: "0.9rem", color: "var(--muted)" }}>
+                Sign in with w3 SSO (company credentials)
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (mode === "ibm") {
     return (
       <div className="container">
         <div className="card" style={{ maxWidth: 400, marginTop: "3rem" }}>
-          <h1 style={{ marginTop: 0 }}>Login failed</h1>
-          <div className="alert alert-error">{error}</div>
-          <button type="button" className="btn btn-primary" onClick={() => navigate("/login", { replace: true })}>
-            Back to login
+          <h1 style={{ marginTop: 0 }}>IBM w3 SSO</h1>
+          <p style={{ color: "var(--muted)", marginBottom: "1.5rem" }}>
+            You will be redirected to the company login page.
+          </p>
+          {error && <div className="alert alert-error">{error}</div>}
+          <button
+            type="button"
+            className="btn btn-primary"
+            style={{ width: "100%", marginBottom: "0.5rem" }}
+            onClick={handleIbmLogin}
+          >
+            Continue with w3 SSO
+          </button>
+          <button type="button" className="btn" style={{ width: "100%" }} onClick={() => { setMode("choose"); setError(""); }}>
+            Back
           </button>
         </div>
       </div>
@@ -53,8 +109,43 @@ export default function AuthCallback() {
   }
 
   return (
-    <div className="container" style={{ marginTop: "3rem", textAlign: "center" }}>
-      <p>Signing you in…</p>
+    <div className="container">
+      <div className="card" style={{ maxWidth: 400, marginTop: "3rem" }}>
+        <h1 style={{ marginTop: 0 }}>Demo user</h1>
+        <form onSubmit={handleDemoSubmit}>
+          {error && <div className="alert alert-error">{error}</div>}
+          <div className="form-group">
+            <label htmlFor="email">Email</label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@company.com"
+              required
+              autoComplete="email"
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="name">Full Name</label>
+            <input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Your name"
+              required
+              autoComplete="name"
+            />
+          </div>
+          <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: "100%", marginBottom: "0.5rem" }}>
+            {loading ? "Signing in…" : "Sign in"}
+          </button>
+          <button type="button" className="btn" style={{ width: "100%" }} onClick={() => { setMode("choose"); setError(""); }}>
+            Back
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
