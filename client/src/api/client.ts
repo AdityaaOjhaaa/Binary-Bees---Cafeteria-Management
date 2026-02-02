@@ -1,7 +1,7 @@
 const getToken = () => localStorage.getItem("cafeteria_auth");
 
-// This pulls the Render URL from your deploy.yml
-const API_BASE_URL = import.meta.env.VITE_API_URL || "";
+// FORCING the Render URL here to bypass the 404 issue
+const API_BASE_URL = "https://cafeteria-api-t06o.onrender.com";
 
 async function request<T>(
   path: string,
@@ -15,7 +15,7 @@ async function request<T>(
   
   if (token) (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
 
-  // FIX: Use API_BASE_URL so it hits Render instead of GitHub
+  // Ensure every request hits Render
   const fullPath = path.startsWith("http") 
     ? path 
     : `${API_BASE_URL}/api${path}`;
