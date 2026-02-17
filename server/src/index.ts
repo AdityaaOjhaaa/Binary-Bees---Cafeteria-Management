@@ -4,10 +4,10 @@ import cors from "cors";
 import { authRouter } from "./routes/auth.js";
 import { w3AuthRouter } from "./routes/w3Auth.js";
 import { reservationRouter } from "./routes/reservations.js";
-import { availabilityRouter } from "./routes/availability.js";
-import { employeeRouter } from "./routes/employees.js";
+import { availabilityRouter } from "./routes/availabilityt.js";
+import { employeeRouter } from "./routes/employeess.js";
 import swaggerUi from "swagger-ui-express";
-import { swaggerSpec } from "./config/swagger.js";
+import { swaggerSpec } from "./config/swaggers.js";
 
 const app = express();
 const PORT = process.env.PORT ?? 3001;
